@@ -1,0 +1,24 @@
+{
+  "commands": {
+    "init_goal": {
+      "description": "启动去模糊引擎：把模糊想法转化为具体可衡量的目标",
+      "command": "python src/cli.py /init_goal ${args}"
+    },
+    "split": {
+      "description": "将目标拆解为里程碑和原子任务",
+      "command": "python src/cli.py /split ${args}"
+    },
+    "schedule": {
+      "description": "生成定时任务 cron 配置",
+      "command": "python src/cli.py /schedule ${args}"
+    },
+    "align": {
+      "description": "计划偏离时重新校准，不丢失原始目标",
+      "command": "python src/cli.py /align ${args}"
+    },
+    "status": {
+      "description": "查看计划当前进展",
+      "command": "python src/cli.py /status ${args}"
+    }
+  }
+}
