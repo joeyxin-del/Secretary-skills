@@ -37,26 +37,48 @@ class SecretaryCLI:
     # ── /init_goal ────────────────────────────────────────────────────
 
     def cmd_init_goal(self, text: str):
-        """De-ambiguate a vague vision into a concrete goal."""
-        print(f"\n  📝 Initial Goal: {text}\n")
-        print("  Let's make this concrete. Answer a few questions:\n")
+        """De-ambiguate a vague vision into a concrete goal — one question at a time."""
+        self.de_engine.set_raw_text(text)
+        print(f"\n  📝 你的目标：{text}\n")
+        print("  让我陪你把这个想法理清楚。一次只聊一个问题。\n")
 
         while True:
-            q = self.de_engine.ask_next()
+            q = self.de_engine.next_question()
             if q is None:
+                print("  看起来这个话题我们已经聊得差不多了。")
                 break
-            answer = input(f"  ❓ {q}\n  > ") or "TBD"
-            self.de_engine.record_answer(q, answer)
+
+            print(f"  ❓ {q}")
+            answer = input("  > ") or "TBD"
+            # Map back to the topic of the current question
+            current_q = self.de_engine.QUESTION_BANK[self.de_engine._current_index]
+            self.de_engine.record_answer(current_q["topic"], q, answer)
+
+            # After each answer, give a lightweight reflection and check readiness
+            print(f"  ✓ 记下了。")
+            print()
+            ready = input("  现在这个目标对你来说清晰了吗？清楚了就告诉我「清楚了」，还想再聊聊就按回车继续 > ").strip().lower()
+
+            if ready in ("清楚了", "清晰了", "是", "clear", "y", "yes"):
+                if self.de_engine.is_goal_clear(user_says_clear=True):
+                    print("\n  ✅ 好，目标已经足够清晰，可以进入下一步了。")
+                    break
+                else:
+                    print("  快了，还有几个关键问题聊完就更稳了——")
+                    # continue loop
+            print()
 
         self.goal = self.de_engine.lock_goal(text)
-        print(f"\n  ✅ Goal Locked: {self.goal.refined_statement}\n")
+        print(f"\n  ✅ Goal Locked（目标已锁定）:")
+        print(f"     {self.goal.refined_statement}\n")
+        print("  判断标准：")
         for c in self.goal.success_criteria:
             print(f"     • {c}")
 
-        save = input("\n  💾 Save this goal as a plan document? (Y/n): ").strip().lower()
+        save = input("\n  💾 把目标存为计划文档？(Y/n): ").strip().lower()
         if save != "n":
             self.plan_file = self.store.save_goal(self.goal)
-            print(f"     Saved → {self.plan_file}")
+            print(f"     已保存 → {self.plan_file}")
         return self.goal
 
     # ── /split ────────────────────────────────────────────────────────

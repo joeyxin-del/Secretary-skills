@@ -10,21 +10,60 @@ from src.engine import (
 
 class TestDeambiguationEngine:
 
-    def test_probes_cycle(self):
+    def test_next_question_cycle(self):
         eng = DeambiguationEngine()
-        assert eng.ask_next() is not None
-        for _ in range(len(eng.PROBES)):
-            eng.record_answer(eng.ask_next(), "some answer")
-        assert eng.ask_next() is None
+        eng.set_raw_text("存100万")
+        # First question should be about meaning
+        q1 = eng.next_question()
+        assert q1 is not None
+        assert "存100万" in q1
+
+        # Answer all topics one by one
+        for q in eng.QUESTION_BANK:
+            topic = q["topic"]
+            eng.record_answer(topic, q["text"], "some answer")
+
+        # After all topics are covered, next_question should return None
+        assert eng.next_question() is None
 
     def test_lock_goal(self):
         eng = DeambiguationEngine()
-        eng.record_answer("How will you measure progress?", "finish 3 chapters")
-        eng.record_answer("What does success look like when this is done?", "pass exam")
+        eng.set_raw_text("learn Python")
+        eng.record_answer("meaning", "question?", "pass exam")
+        eng.record_answer("measure", "question?", "finish 3 chapters")
         goal = eng.lock_goal("learn Python")
         assert isinstance(goal, Goal)
         assert "learn Python" in goal.refined_statement
-        assert "finish 3 chapters" in goal.success_criteria
+        assert "[meaning] pass exam" in goal.success_criteria
+        assert "[measure] finish 3 chapters" in goal.success_criteria
+
+    def test_topics_remaining(self):
+        eng = DeambiguationEngine()
+        assert len(eng.topics_remaining) == 6
+        eng.record_answer("meaning", "q?", "a")
+        assert "meaning" not in eng.topics_remaining
+        assert len(eng.topics_remaining) == 5
+
+    def test_is_goal_clear_no_core(self):
+        eng = DeambiguationEngine()
+        # Only covered risk, not core topics
+        eng.record_answer("risk", "q?", "a")
+        assert not eng.is_goal_clear(user_says_clear=True)
+
+    def test_is_goal_clear_with_core(self):
+        eng = DeambiguationEngine()
+        eng.record_answer("meaning", "q?", "a")
+        eng.record_answer("scope", "q?", "a")
+        eng.record_answer("timeline", "q?", "a")
+        assert eng.is_goal_clear(user_says_clear=True)
+
+    def test_is_goal_clear_user_not_ready(self):
+        eng = DeambiguationEngine()
+        eng.record_answer("meaning", "q?", "a")
+        eng.record_answer("scope", "q?", "a")
+        eng.record_answer("timeline", "q?", "a")
+        # User hasn't said it's clear yet
+        assert not eng.is_goal_clear(user_says_clear=False)
 
 
 class TestVerticalSplitter:
